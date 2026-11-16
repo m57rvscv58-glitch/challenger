@@ -1,196 +1,218 @@
 
-/* CHALLENGER ULTRA - PROFILE & STORE UPDATE */
+/* CHALLENGER ULTRA 3.1 - POOL & BASKET UPGRADE */
 
-let coins = Number(localStorage.getItem('ch_coins')) || 0;
-let playerName = localStorage.getItem('ch_name') || 'الأسطورة';
-let avatar = localStorage.getItem('ch_avatar') || '';
-let owned = JSON.parse(localStorage.getItem('ch_owned') || '["default"]');
-let equipped = localStorage.getItem('ch_equipped') || 'default';
-
-const shopItems = [
- {id:'gold',name:'الإطار الذهبي',price:100,icon:'🥇'},
- {id:'fire',name:'إطار النار',price:150,icon:'🔥'},
- {id:'diamond',name:'إطار الماس',price:250,icon:'💎'},
- {id:'crown',name:'التاج الملكي',price:350,icon:'👑'},
- {id:'legend',name:'لقب الأسطورة',price:200,icon:'⚡'},
- {id:'star',name:'ملصق النجمة',price:50,icon:'⭐'},
- {id:'heart',name:'ملصق القلب',price:50,icon:'❤️'},
- {id:'rocket',name:'ملصق الصاروخ',price:75,icon:'🚀'}
-];
-
-function saveExtra(){
- localStorage.setItem('ch_coins',coins);
- localStorage.setItem('ch_name',playerName);
- localStorage.setItem('ch_avatar',avatar);
- localStorage.setItem('ch_owned',JSON.stringify(owned));
- localStorage.setItem('ch_equipped',equipped);
- updateExtra();
-}
-
-function updateExtra(){
- const c=document.getElementById('coinCount');
- if(c)c.textContent=coins;
- const n=document.getElementById('playerDisplay');
- if(n)n.textContent=playerName;
- const a=document.getElementById('avatarDisplay');
- if(a)a.innerHTML=avatar
- ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
- : '👤';
-}
-
-const oldAward=award;
-award=function(n){
- oldAward(n);
- coins+=Math.max(1,Math.floor(n/2));
- saveExtra();
-};
-
-const extraStyle=document.createElement('style');
-extraStyle.textContent=`
-.extra-panel{margin:18px 0;padding:17px;border:1px solid #30436b;
-border-radius:20px;background:linear-gradient(140deg,#172b4b,#211b3c)}
-.extra-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
-.extra-btn{background:#263657;border:1px solid #43577e;border-radius:14px;padding:13px 5px;text-align:center}
-.extra-btn b{display:block;font-size:23px}
-.extra-btn small{color:#aebed9}
-.avatar-circle{width:75px;height:75px;border-radius:50%;background:#273b60;
-border:3px solid #43e8ff;display:grid;place-items:center;font-size:35px;overflow:hidden}
-.shop-card{background:#202e4c;border:1px solid #43577e;padding:12px;border-radius:14px;text-align:center}
-.shop-card button{margin-top:9px}
-.chat-box{height:210px;overflow-y:auto;background:#091224;border-radius:12px;padding:10px}
-.chat-msg{background:#26395e;padding:9px 12px;border-radius:12px;margin:7px 0}
-.extra-input{width:100%;padding:12px;background:#091224;color:white;border:1px solid #43577e;border-radius:10px;margin:7px 0}
-`;
-document.head.appendChild(extraStyle);
-
-const extraHTML=`
-<section class="extra-panel">
- <div style="display:flex;align-items:center;gap:13px">
-  <div class="avatar-circle" id="avatarDisplay">👤</div>
-  <div style="flex:1">
-   <h3 id="playerDisplay" style="margin:0">${playerName}</h3>
-   <small class="muted">ملف اللاعب الشخصي</small>
-  </div>
-  <div>🪙 <b id="coinCount">${coins}</b></div>
+function pool(){
+ let canvas,ctx,balls=[],running=false,aim={x:0,y:0},power=0.65;
+ let score=0,shots=0,raf=0;
+ const W=360,H=510;
+ const pockets=[
+ [28,28],[180,22],[332,28],
+ [28,482],[180,488],[332,482]
+ ];
+ const colors=['#f4c542','#3988ee','#e94c48','#a85be9','#44d6a0','#f28b35'];
+ $('gameArea').innerHTML=`
+ <p class="center muted">اسحب بإصبعك لتحديد اتجاه الضربة، ثم اضغط تسديد.</p>
+ <div class="center" style="font-size:25px">${cueStyle}</div>
+ <div style="width:100%;max-width:390px;margin:auto">
+ <canvas id="poolCanvas" style="width:100%;display:block;border-radius:18px;touch-action:none;background:#07583e"></canvas>
  </div>
- <div class="extra-grid">
-  <button class="extra-btn" onclick="editProfile()"><b>👤</b><small>ملفي</small></button>
-  <button class="extra-btn" onclick="showShop()"><b>🛍️</b><small>المتجر</small></button>
-  <button class="extra-btn" onclick="showChat()"><b>💬</b><small>الدردشة</small></button>
- </div>
-</section>
-<section id="extraScreen" class="screen">
- <div class="screen-head">
-  <h2 id="extraTitle">المتجر</h2>
-  <button class="secondary" onclick="hideExtra()">✕ إغلاق</button>
- </div>
- <div id="extraArea"></div>
-</section>
-<input id="avatarFile" type="file" accept="image/*" hidden>
-`;
-document.querySelector('.hero').insertAdjacentHTML('afterend',extraHTML);
-
-function openExtra(title){
- $('extraTitle').textContent=title;
- $('extraScreen').classList.add('active');
- $('extraScreen').scrollIntoView({behavior:'smooth'});
-}
-function hideExtra(){
- $('extraScreen').classList.remove('active');
-}
-function editProfile(){
- openExtra('ملفي الشخصي');
- $('extraArea').innerHTML=`
  <div class="center">
-  <div class="avatar-circle" style="margin:auto" id="profileAvatar">👤</div>
-  <input class="extra-input" id="nameInput" value="${playerName.replace(/"/g,'&quot;')}" placeholder="اسم اللاعب">
-  <button class="secondary" onclick="$('avatarFile').click()">📸 اختر صورة من الاستوديو</button>
-  <p><button class="primary" onclick="saveProfile()">حفظ الملف</button></p>
+ <div class="big-number" id="poolScore">0</div>
+ <p id="poolMsg">التسديدات: 0</p>
+ <label>قوة الضربة</label>
+ <input id="poolPower" type="range" min="10" max="100" value="65" style="width:100%;accent-color:#43e8ff">
+ <button class="primary" id="shoot" style="width:100%;margin-top:10px">🎱 سدّد</button>
+ <button class="secondary" onclick="pool()" style="margin-top:8px">إعادة الطاولة</button>
  </div>`;
- updateExtra();
- $('profileAvatar').innerHTML=avatar
- ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover">`
- : '👤';
-}
-$('avatarFile').onchange=e=>{
- const file=e.target.files[0];
- if(!file)return;
- if(!file.type.startsWith('image/'))return alert('اختر صورة صحيحة');
- if(file.size>1200000)return alert('الصورة كبيرة، اختر صورة أقل من 1.2 ميجابايت');
- const reader=new FileReader();
- reader.onload=()=>{
-  avatar=reader.result;
-  saveExtra();
-  if($('profileAvatar'))$('profileAvatar').innerHTML=`<img src="${avatar}" style="width:100%;height:100%;object-fit:cover">`;
+
+ canvas=$('poolCanvas');
+ canvas.width=W;canvas.height=H;
+ ctx=canvas.getContext('2d');
+
+ let cue={x:180,y:390,vx:0,vy:0,r:9,color:'#fff',active:true};
+ function resetBalls(){
+  balls=[];
+  let positions=[[180,145],[165,130],[195,130],[150,115],[180,115],[210,115]];
+  positions.forEach((p,i)=>balls.push({
+   x:p[0],y:p[1],vx:0,vy:0,r:10,color:colors[i]
+  }));
+  cue.x=180;cue.y=390;cue.vx=0;cue.vy=0;cue.active=true;
+ }
+ resetBalls();
+
+ function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#714326';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#08754f';
+  ctx.fillRect(17,17,W-34,H-34);
+  ctx.strokeStyle='#d9b16a';
+  ctx.lineWidth=3;
+  ctx.strokeRect(25,25,W-50,H-50);
+
+  pockets.forEach(([x,y])=>{
+   ctx.beginPath();ctx.arc(x,y,17,0,Math.PI*2);
+   ctx.fillStyle='#02070b';ctx.fill();
+  });
+
+  function ball(b){
+   let g=ctx.createRadialGradient(b.x-4,b.y-5,1,b.x,b.y,b.r);
+   g.addColorStop(0,'#fff');g.addColorStop(.25,b.color);
+   g.addColorStop(1,'#17212a');
+   ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+   ctx.fillStyle=g;ctx.fill();
+   ctx.strokeStyle='#ffffff55';ctx.stroke();
+  }
+  balls.forEach(ball);
+  if(cue.active){
+   ball(cue);
+   if(!running){
+    let dx=aim.x-cue.x,dy=aim.y-cue.y;
+    let len=Math.hypot(dx,dy)||1;
+    ctx.beginPath();
+    ctx.moveTo(cue.x-dx/len*18,cue.y-dy/len*18);
+    ctx.lineTo(cue.x-dx/len*95,cue.y-dy/len*95);
+    ctx.strokeStyle='#f2d09b';ctx.lineWidth=5;ctx.stroke();
+   }
+  }
+ }
+
+ function pocketCheck(b){
+  for(let p of pockets){
+   if(Math.hypot(b.x-p[0],b.y-p[1])<19){
+    b.pocketed=true;
+    if(b!==cue){
+     score++;award(5);
+     $('poolScore').textContent=score;
+    }else cue.active=false;
+    return true;
+   }
+  }
+  return false;
+ }
+
+ function update(){
+  let all=[cue,...balls];
+  all.forEach(b=>{
+   if(b.pocketed||b===cue&&!cue.active)return;
+   b.x+=b.vx;b.y+=b.vy;
+   b.vx*=.985;b.vy*=.985;
+   if(Math.abs(b.vx)+Math.abs(b.vy)<.04)b.vx=b.vy=0;
+   if(pocketCheck(b))return;
+   if(b.x<35||b.x>325){b.vx*=-.85;b.x=Math.max(35,Math.min(325,b.x))}
+   if(b.y<35||b.y>475){b.vy*=-.85;b.y=Math.max(35,Math.min(475,b.y))}
+  });
+  for(let i=0;i<all.length;i++){
+   for(let j=i+1;j<all.length;j++){
+    let a=all[i],b=all[j];
+    if(a.pocketed||b.pocketed||a===cue&&!cue.active||b===cue&&!cue.active)continue;
+    let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+    if(d>0&&d<a.r+b.r){
+     let nx=dx/d,ny=dy/d;
+     let overlap=(a.r+b.r-d)/2;
+     a.x-=nx*overlap;a.y-=ny*overlap;
+     b.x+=nx*overlap;b.y+=ny*overlap;
+     let v=(a.vx-b.vx)*nx+(a.vy-b.vy)*ny;
+     if(v>0){
+      a.vx-=v*nx;a.vy-=v*ny;
+      b.vx+=v*nx;b.vy+=v*ny;
+     }
+    }
+   }
+  }
+  draw();
+  if(running)raf=requestAnimationFrame(update);
+ }
+ function moving(){
+  return [cue,...balls].some(b=>!b.pocketed&&Math.abs(b.vx)+Math.abs(b.vy)>.08);
+ }
+ function loop(){
+  if(!running)return;
+  update();
+  if(!moving()){running=false;draw()}
+ }
+ function aimAt(e){
+  let r=canvas.getBoundingClientRect();
+  let x=(e.clientX-r.left)*W/r.width;
+  let y=(e.clientY-r.top)*H/r.height;
+  aim={x,y};
+  draw();
+ }
+ canvas.addEventListener('pointerdown',e=>aimAt(e));
+ canvas.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='touch')aimAt(e)});
+ $('poolPower').oninput=e=>power=Number(e.target.value)/100;
+ $('shoot').onclick=()=>{
+  if(running||!cue.active)return;
+  let dx=cue.x-aim.x,dy=cue.y-aim.y;
+  let len=Math.hypot(dx,dy);
+  if(len<5){dx=0;dy=-1;len=1}
+  let speed=power*13;
+  cue.vx=dx/len*speed;cue.vy=dy/len*speed;
+  shots++;running=true;
+  $('poolMsg').textContent='التسديدات: '+shots;
+  loop();
  };
- reader.readAsDataURL(file);
-};
-function saveProfile(){
- playerName=$('nameInput').value.trim()||'الأسطورة';
- saveExtra();
- editProfile();
+ aim={x:180,y:470};
+ draw();
 }
-function showShop(){
- openExtra('🛍️ متجر الأساطير');
- $('extraArea').innerHTML=`
- <p class="center">رصيدك: 🪙 <b id="shopCoins">${coins}</b></p>
- <div class="extra-grid" style="grid-template-columns:repeat(2,1fr)">
- ${shopItems.map(x=>`
- <div class="shop-card">
-  <div style="font-size:30px">${x.icon}</div>
-  <b>${x.name}</b>
-  <p>🪙 ${x.price}</p>
-  ${owned.includes(x.id)
-   ? `<button class="secondary" onclick="equipItem('${x.id}')">${equipped===x.id?'مفعّل':'استخدم'}</button>`
-   : `<button class="primary" onclick="buyItem('${x.id}')">شراء</button>`}
- </div>`).join('')}
- </div>`;
-}
-function buyItem(id){
- const item=shopItems.find(x=>x.id===id);
- if(!item||owned.includes(id))return;
- if(coins<item.price)return alert('عملاتك غير كافية!');
- coins-=item.price;
- owned.push(id);
- saveExtra();
- showShop();
-}
-function equipItem(id){
- if(!owned.includes(id))return;
- equipped=id;
- saveExtra();
- showShop();
-}
-let chatMessages=[];
-function showChat(){
- openExtra('💬 دردشة تحدّاك');
- $('extraArea').innerHTML=`
- <div class="notice">هذه دردشة محلية تجريبية على نفس الجهاز، وليست دردشة أونلاين بعد.</div>
- <div id="chatMessages" class="chat-box"></div>
- <input id="chatInput" class="extra-input" placeholder="اكتب رسالتك...">
- <div class="extra-grid">
-  ${['😂','🔥','❤️','👏','😎','🏆'].map(x=>`<button class="extra-btn" onclick="sendSticker('${x}')"><b>${x}</b></button>`).join('')}
+
+function basket(){
+ let shots=0,score=0,busy=false;
+ $('gameArea').innerHTML=`
+ <p class="center muted">صوّب الكرة نحو الحلقة وسجّل أكبر عدد من النقاط!</p>
+ <div id="basketCourt" style="
+ position:relative;height:390px;max-width:420px;margin:15px auto;
+ border:5px solid #eac18a;border-radius:18px;overflow:hidden;
+ background:repeating-linear-gradient(0deg,#b96e38 0px,#b96e38 38px,#c77b43 39px,#c77b43 77px);
+ ">
+ <div style="position:absolute;left:50%;top:18px;transform:translateX(-50%);width:115px;height:90px;background:#d9f3ff66;border:5px solid white;border-radius:5px"></div>
+ <div style="position:absolute;left:50%;top:102px;transform:translateX(-50%);width:100px;height:8px;background:#f04435;border-radius:50%"></div>
+ <div style="position:absolute;left:50%;top:107px;transform:translateX(-50%);width:78px;height:48px;border:3px solid #fff;border-top:0;border-radius:0 0 30px 30px;clip-path:polygon(0 0,100% 0,85% 100%,15% 100%);background:repeating-linear-gradient(90deg,transparent 0 10px,#fff 11px 13px)"></div>
+ <div id="basketBall" style="position:absolute;left:50%;bottom:30px;transform:translateX(-50%);font-size:48px;z-index:3;transition:none">${basketStyle}</div>
+ <div style="position:absolute;bottom:0;left:0;right:0;height:8px;background:#f6d5a5"></div>
  </div>
- <button class="primary" style="width:100%;margin-top:10px" onclick="sendChat()">إرسال</button>`;
- drawChat();
+ <div class="center">
+ <div class="big-number" id="basketScore">0</div>
+ <p id="basketMsg">التسديدات: 0</p>
+ <button class="primary" id="throw" style="width:100%">🏀 صوّب الآن</button>
+ <button class="secondary" onclick="basket()" style="margin-top:8px">إعادة اللعب</button>
+ </div>`;
+
+ const ball=$('basketBall');
+ const court=$('basketCourt');
+ $('throw').onclick=()=>{
+  if(busy)return;
+  busy=true;shots++;
+  let hit=Math.random()>.42;
+  let start=330;
+  let end=hit?105:Math.round(90+Math.random()*100);
+  let began=performance.now();
+  function animate(now){
+   let t=Math.min(1,(now-began)/650);
+   let y=start-(start-end)*t;
+   let x=hit?0:Math.sin(t*Math.PI)*65;
+   let scale=1-.35*t;
+   ball.style.bottom=y+'px';
+   ball.style.left=`calc(50% + ${x}px)`;
+   ball.style.transform=`translateX(-50%) scale(${scale}) rotate(${t*500}deg)`;
+   if(t<1){requestAnimationFrame(animate)}
+   else{
+    if(hit){
+     score++;award(10);
+     $('basketMsg').textContent='سلة! ممتاز! +10 نقاط 🏆';
+    }else{
+     $('basketMsg').textContent='أخطأت التسديدة! حاول مرة ثانية';
+    }
+    $('basketScore').textContent=score;
+    setTimeout(()=>{
+     ball.style.transition='bottom .2s';
+     ball.style.bottom='30px';ball.style.left='50%';
+     ball.style.transform='translateX(-50%)';
+     setTimeout(()=>{ball.style.transition='none';busy=false},220);
+    },300);
+   }
+  }
+  $('basketMsg').textContent='الكرة في الهواء...';
+  requestAnimationFrame(animate);
+ };
 }
-function drawChat(){
- const box=$('chatMessages');
- if(!box)return;
- box.innerHTML=chatMessages.map(m=>`
- <div class="chat-msg"><b>${m.name}</b><br>${m.text}</div>`).join('');
- box.scrollTop=box.scrollHeight;
-}
-function sendChat(){
- const input=$('chatInput');
- const value=input.value.trim();
- if(!value)return;
- chatMessages.push({name:playerName,text:value.slice(0,200)});
- input.value='';
- drawChat();
-}
-function sendSticker(sticker){
- chatMessages.push({name:playerName,text:sticker});
- drawChat();
-}
-saveExtra();
